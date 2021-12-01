@@ -3,7 +3,7 @@ import requests
 import pandas as pd   
 from datetime import datetime,timedelta,date
 
-class Crypto ():
+class Crypto:
     df = pd.DataFrame()
     def __init__(self,symbol):
         self.symbol = symbol
@@ -77,7 +77,8 @@ class Crypto ():
         data = request.json()
         
         if type(data) == dict:
-            raise SystemExit(f"error code: {data['code']}\nmessage : {data['msg']}")
+            raise SystemExit(f"error code: {data['code']}\nmessage : \
+                {data['msg']}")
         try:
             data[0]
         except IndexError :
@@ -89,8 +90,8 @@ class Crypto ():
             
         df = pd.DataFrame(data)
         df.columns = ['OpenTime','Open','High','Low','Close','Volume',
-                      'CloseTime','QuoteVolume','TradesNumber','TakerBaseVolume',
-                      'TakerQuoteVolume','Ignore']
+                    'CloseTime','QuoteVolume','TradesNumber','TakerBaseVolume',
+                    'TakerQuoteVolume','Ignore']
         df.index = df.OpenTime
         return df
 
@@ -113,7 +114,7 @@ class Crypto ():
         for i,day in enumerate(date_range):
             if len(date_range)>i+1:
                 self.df = self.df.append(
-                          self.data_to_df(day.strftime('%Y-%m-%d'),
-                                      date_range[i+1].strftime('%Y-%m-%d'))) 
+                        self.data_to_df(day.strftime('%Y-%m-%d'),
+                                    date_range[i+1].strftime('%Y-%m-%d'))) 
 
 
