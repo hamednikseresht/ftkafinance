@@ -96,8 +96,8 @@ class Crypto:
 
 
     def collect_data (self, start_date:str, end_date:str):
-        """ Split request with large interval time to smaller request in order to 
-        over come binance api limitaion 
+        """ Split request with large interval time to smaller request in
+        order to over come binance api limitaion 
     
         Parameters
         ----------
@@ -114,17 +114,110 @@ class Crypto:
                                     date_range[i+1].strftime('%Y-%m-%d')))
     
     def insert_to_mongo(self):
-        """ insert data to mongoDB 
+        """ insert data to mongoDB
+            read .env file to get mongoDB credentials
+            create a new collection if it doesn't exist
         """
         config = dotenv_values('/.env')
         client = MongoClient(
             config['MONGO_Host'],
-            config['MONGO_Port'],
+            int(config['MONGO_Port']),
             username=config['MONGO_User'],
             password=config['MONGO_Password'])
+        try :
+            db = client[config['MONGO_DB']]
+        except Exception as exp:
+            raise SystemExit(exp)
+            sys.exit(1)
+            
         mycol = client[config['MONGO_DB']][self.symbol]
         self.df['_id']=self.df.OpenTime.astype(str)
         json_list = json.loads(json.dumps(list(self.df.T.to_dict().values())))
         mycol.insert_many(json_list) 
 
+    def load_data(self,start_date,end_date,interval='1T'):
+        """load data from mongoDB and convert it to a pandas data frame
+        with desire time frequency
+        
+        Parameters
+        ----------
+            start_date : str
+                start date for retrieving data  format: 2020-12-30.
+            end_date : str  
+                end date for retrieving data: 2020-12-30
+            interval : str
+                interval time for retrieving data.
+                default value is 1T (1 minute)
+
+        """
+        config = dotenv_values('/.env')
+        client = MongoClient(
+        config['MONGO_Host'],
+        int(config['MONGO_Port']),
+        username=config['MONGO_User'],
+        password=config['MONGO_Password'])
+        mycol = client[config['MONGO_DB']][self.symbol]
+        try :
+            db = client[config['MONGO_DB']]
+        except Exception as exp:
+            raise SystemExit(exp)
+            sys.exit(1)
+
+        data = pd.DataFrame(list(mycol.find({'_id':{'$gt':str(self.str_to_epoch_ms(start_date)),
+                                '$lt':str(self.str_to_epoch_ms(end_date))}})))
+        data = self.clean_data(data)
+        
+        return self.tf_maker(data,interval)
+    
+    def clean_data (self,data):
+        """transform data in data frame to classic candle stick with volume
+    
+        Parameters
+        ----------
+        df : pandas data frame
+            data frame complete data of symbol.
+    
+        Returns
+        -------
+        pandas data frame
+            clean classic candle stick with indexig date.
+    
+        """ 
+        data.index = [datetime.fromtimestamp(x/1000) for x in data.OpenTime]
+        data.index.name = 'Date'
+        data['Open'] = pd.to_numeric(data['Open'],downcast="float")
+        data['High'] = pd.to_numeric(data['High'],downcast="float")
+        data['Low'] = pd.to_numeric(data['Low'],downcast="float")
+        data['Close'] = pd.to_numeric(data['Close'],downcast="float")
+        data['Volume'] = pd.to_numeric(data['Volume'],downcast="float")
+        
+        return data[['Open','High','Low','Close','Volume']]
+    
+    def tf_maker(self,data,interval):
+        offset =""" 
+        Wronge Interval!
+        Please use below identifier for time interval
+        ---------------------------------------------
+        D        calendar day frequency
+        W        weekly frequency
+        M        month end frequency
+        Q        quarter end frequency
+        A, Y     year end frequency
+        H        hourly frequency
+        T, min   minutely frequency
+        ----------------------------------------------
+        """
+        ohlc = {
+        'Open': 'first',
+        'High': 'max',
+        'Low': 'min',
+        'Close': 'last',
+        'Volume': 'sum'
+        } 
+        try :
+            data = data.resample(interval).apply(ohlc)
+        except ValueError :
+            sys.exit(print(offset))
+            
+        return data
 
