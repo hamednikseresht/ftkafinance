@@ -2,35 +2,35 @@ import sys
 import requests        
 import pandas as pd   
 from datetime import datetime,timedelta,date
+from dotenv import dotenv_values
+from pymongo import MongoClient
+import json
 
 class Crypto:
     df = pd.DataFrame()
+    
     def __init__(self,symbol):
         self.symbol = symbol
 
     def str_to_epoch_ms(self,date:str):
+        """ convert date string to epoch time in miliseconds """
         return int(datetime.strptime(date,'%Y-%m-%d').timestamp()*1000)
     
     def data_update (self):
-        """
-        update today data untile now
-    
+        """ update today's data untile now
+        
         Parameters
         ----------
         symbol : str 
-        symbol supported by Binance API.
-        
+        symbol supported by Binance API. 
         """
         start = date.today()
         end = start + timedelta(days=1)
-        
-        
         self.df = self.df.append(self.data_to_df(
             start.isoformat(),end.isoformat()))
     
     def data_to_df (self,start_time:str,end_time:str):
-        """
-        Get data from Binance API and convert it to a pandas data frame
+        """ Get data from Binance API and convert it to a pandas data frame
         numbers of candles are limited to 1500 per request
     
         Parameters
@@ -46,12 +46,11 @@ class Crypto:
         ------
         SystemExit
             The end date must be larger than the start date.
-    
+            
         Returns
         -------
         df : pandas data frame
             converted API response to a data frame.
-    
         """
         start = self.str_to_epoch_ms(start_time)
         end = self.str_to_epoch_ms(end_time)
@@ -97,8 +96,7 @@ class Crypto:
 
 
     def collect_data (self, start_date:str, end_date:str):
-        """
-        split request with large interval time to smaller request in order to 
+        """ Split request with large interval time to smaller request in order to 
         over come binance api limitaion 
     
         Parameters
@@ -107,14 +105,26 @@ class Crypto:
             start date for retrieving data  format: 2020-12-30.
         end_time : str
             end date for retrieving data: 2020-12-30.
-
         """
-    
         date_range = pd.date_range(start_date,end_date)
         for i,day in enumerate(date_range):
             if len(date_range)>i+1:
                 self.df = self.df.append(
                         self.data_to_df(day.strftime('%Y-%m-%d'),
-                                    date_range[i+1].strftime('%Y-%m-%d'))) 
+                                    date_range[i+1].strftime('%Y-%m-%d')))
+    
+    def insert_to_mongo(self):
+        """ insert data to mongoDB 
+        """
+        config = dotenv_values('/.env')
+        client = MongoClient(
+            config['MONGO_Host'],
+            config['MONGO_Port'],
+            username=config['MONGO_User'],
+            password=config['MONGO_Password'])
+        mycol = client[config['MONGO_DB']][self.symbol]
+        self.df['_id']=self.df.OpenTime.astype(str)
+        json_list = json.loads(json.dumps(list(self.df.T.to_dict().values())))
+        mycol.insert_many(json_list) 
 
 
