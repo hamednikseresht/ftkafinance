@@ -8,6 +8,7 @@ import json
 
 class Crypto:
     df = pd.DataFrame()
+    _config = dotenv_values('/.env')
     
     def __init__(self,symbol):
         self.symbol = symbol
@@ -112,28 +113,32 @@ class Crypto:
                 self.df = self.df.append(
                         self.data_to_df(day.strftime('%Y-%m-%d'),
                                     date_range[i+1].strftime('%Y-%m-%d')))
+        
+    def mongo_connection(self):
+        client = MongoClient(
+            self._config['MONGO_Host'],
+            int(self._config['MONGO_Port']),
+            username=self._config['MONGO_User'],
+            password=self._config['MONGO_Password'])
+        return client
     
     def insert_to_mongo(self):
         """ insert data to mongoDB
             read .env file to get mongoDB credentials
             create a new collection if it doesn't exist
         """
-        config = dotenv_values('/.env')
-        client = MongoClient(
-            config['MONGO_Host'],
-            int(config['MONGO_Port']),
-            username=config['MONGO_User'],
-            password=config['MONGO_Password'])
+        client = self.mongo_connection() 
         try :
-            db = client[config['MONGO_DB']]
+            client
         except Exception as exp:
             raise SystemExit(exp)
             sys.exit(1)
             
-        mycol = client[config['MONGO_DB']][self.symbol]
+        mycol = client[self._config['MONGO_DB']][self.symbol]
         self.df['_id']=self.df.OpenTime.astype(str)
         json_list = json.loads(json.dumps(list(self.df.T.to_dict().values())))
-        mycol.insert_many(json_list) 
+        mycol.insert_many(json_list)
+        
 
     def load_data(self,start_date,end_date,interval='1T'):
         """load data from mongoDB and convert it to a pandas data frame
@@ -150,15 +155,10 @@ class Crypto:
                 default value is 1T (1 minute)
 
         """
-        config = dotenv_values('/.env')
-        client = MongoClient(
-        config['MONGO_Host'],
-        int(config['MONGO_Port']),
-        username=config['MONGO_User'],
-        password=config['MONGO_Password'])
-        mycol = client[config['MONGO_DB']][self.symbol]
+        client = self.mongo_connection()
+        mycol = client[self._config['MONGO_DB']][self.symbol]
         try :
-            db = client[config['MONGO_DB']]
+            db = client[self._config['MONGO_DB']]
         except Exception as exp:
             raise SystemExit(exp)
             sys.exit(1)
@@ -220,4 +220,19 @@ class Crypto:
             sys.exit(print(offset))
             
         return data
+
+    def get_latest_data(self):
+        client = self.mongo_connection()
+        mycol = client[self._config['MONGO_DB']][self.symbol]
+        latest_date = list(mycol.find({} , {"_id"}).sort("_id",-1).limit(1))
+        return latest_date[0]["_id"]
+
+    def get_data(self):
+        latest = self.get_latest_data()
+        yesterday = self.str_to_epoch_ms(str(date.today() - timedelta(days=1)))
+
+        if(latest == yesterday):
+            pass
+        else:
+            self.collect_data(latest , yesterday)
 
