@@ -18,17 +18,19 @@ class Crypto:
         """ convert date string to epoch time in miliseconds """
         return int(datetime.strptime(date,'%Y-%m-%d').timestamp()*1000)
 
-    def data_update (self):
+    def data_update (self,data_frame):
         """ update today's data untile now
         Parameters
         ----------
         symbol : str 
-        symbol supported by Binance API. 
+        symbol supported by Binance API.
+        return : pandas data frame
+        append new data to the data frame 
         """
         start = date.today()
         end = start + timedelta(days=1)
-        self.df = self.df.append(self.data_to_df(
-            start.isoformat(),end.isoformat()))
+        return data_frame.append(self.data_to_df(start.isoformat(),
+                                                end.isoformat()))
 
     def data_to_df (self,start_time:str,end_time:str):
         """ Get data from Binance API and convert it to a pandas data frame
