@@ -7,6 +7,7 @@ from pymongo import MongoClient
 import json
 
 class Crypto:
+    # Class attributes common to all instances
     df = pd.DataFrame()
     _config = dotenv_values('/.env')
     
@@ -16,10 +17,9 @@ class Crypto:
     def str_to_epoch_ms(self,date:str):
         """ convert date string to epoch time in miliseconds """
         return int(datetime.strptime(date,'%Y-%m-%d').timestamp()*1000)
-    
+
     def data_update (self):
         """ update today's data untile now
-        
         Parameters
         ----------
         symbol : str 
@@ -29,11 +29,10 @@ class Crypto:
         end = start + timedelta(days=1)
         self.df = self.df.append(self.data_to_df(
             start.isoformat(),end.isoformat()))
-    
+
     def data_to_df (self,start_time:str,end_time:str):
         """ Get data from Binance API and convert it to a pandas data frame
         numbers of candles are limited to 1500 per request
-    
         Parameters
         ----------
         symbol : str 
@@ -42,12 +41,10 @@ class Crypto:
             start date for retriving data  format: 2020-12-30.
         end_time : str
             end date for retriving data: 2020-12-30.
-    
         Raises
         ------
         SystemExit
             The end date must be larger than the start date.
-            
         Returns
         -------
         df : pandas data frame
@@ -55,7 +52,6 @@ class Crypto:
         """
         start = self.str_to_epoch_ms(start_time)
         end = self.str_to_epoch_ms(end_time)
-        
         if end<start:
             raise SystemExit("End date must be larger than start date")
             
@@ -67,7 +63,6 @@ class Crypto:
         'endTime': end,
         'limit':'1500'
         }
-        
         try:
             request = requests.get(url,params=params)
         except requests.exceptions.RequestException as exp :
@@ -75,7 +70,6 @@ class Crypto:
             sys.exit(1)
         
         data = request.json()
-        
         if type(data) == dict:
             raise SystemExit(f"error code: {data['code']}\nmessage : \
                 {data['msg']}")
@@ -87,19 +81,17 @@ class Crypto:
             
         if len(data) == 1500:
             print("Warning :\nthe limit rate for binance API is 1500 ")
-            
         df = pd.DataFrame(data)
         df.columns = ['OpenTime','Open','High','Low','Close','Volume',
                     'CloseTime','QuoteVolume','TradesNumber','TakerBaseVolume',
                     'TakerQuoteVolume','Ignore']
         df.index = df.OpenTime
+        
         return df
-
 
     def collect_data (self, start_date:str, end_date:str):
         """ Split request with large interval time to smaller request in
         order to over come binance api limitaion 
-    
         Parameters
         ----------
         start_time : str
@@ -113,15 +105,19 @@ class Crypto:
                 self.df = self.df.append(
                         self.data_to_df(day.strftime('%Y-%m-%d'),
                                     date_range[i+1].strftime('%Y-%m-%d')))
-        
+
     def mongo_connection(self):
+        """ connect to mongoDB with credentials from .env file
+        Returns:
+            Mongo Client Oject
+        """
         client = MongoClient(
             self._config['MONGO_Host'],
             int(self._config['MONGO_Port']),
             username=self._config['MONGO_User'],
             password=self._config['MONGO_Password'])
         return client
-    
+
     def insert_to_mongo(self):
         """ insert data to mongoDB
             read .env file to get mongoDB credentials
@@ -135,10 +131,12 @@ class Crypto:
             sys.exit(1)
             
         mycol = client[self._config['MONGO_DB']][self.symbol]
+        # Set the unique index using the open time
         self.df['_id']=self.df.OpenTime.astype(str)
+        # First onvert the dataframe to a list of dictionaries
+        # then insert the list into the collection with json format 
         json_list = json.loads(json.dumps(list(self.df.T.to_dict().values())))
         mycol.insert_many(json_list)
-        
 
     def load_data(self,start_date,end_date,interval='1T'):
         """load data from mongoDB and convert it to a pandas data frame
@@ -153,7 +151,6 @@ class Crypto:
             interval : str
                 interval time for retrieving data.
                 default value is 1T (1 minute)
-
         """
         client = self.mongo_connection()
         mycol = client[self._config['MONGO_DB']][self.symbol]
@@ -162,26 +159,24 @@ class Crypto:
         except Exception as exp:
             raise SystemExit(exp)
             sys.exit(1)
-
-        data = pd.DataFrame(list(mycol.find({'_id':{'$gt':str(self.str_to_epoch_ms(start_date)),
-                                '$lt':str(self.str_to_epoch_ms(end_date))}})))
+        # get interval data from mongoDB and convert it to a pandas data frame
+        data = pd.DataFrame(list(mycol.find(
+            {'_id':{'$gt': str(self.str_to_epoch_ms(start_date)),
+                    '$lt':str(self.str_to_epoch_ms(end_date))}})))
         data = self.clean_data(data)
         
         return self.tf_maker(data,interval)
     
     def clean_data (self,data):
         """transform data in data frame to classic candle stick with volume
-    
         Parameters
         ----------
         df : pandas data frame
             data frame complete data of symbol.
-    
         Returns
         -------
         pandas data frame
             clean classic candle stick with indexig date.
-    
         """ 
         data.index = [datetime.fromtimestamp(x/1000) for x in data.OpenTime]
         data.index.name = 'Date'
@@ -194,6 +189,9 @@ class Crypto:
         return data[['Open','High','Low','Close','Volume']]
     
     def tf_maker(self,data,interval):
+        """ transform data to desire time frequency 
+            with candle stick and volume data pattern
+        """
         offset =""" 
         Wronge Interval!
         Please use below identifier for time interval
@@ -222,17 +220,25 @@ class Crypto:
         return data
 
     def get_latest_data(self):
+        """Check the latest data inserted to mongoDB
+        Returns:
+            epoch time : last excist data in mongoDB
+        """
         client = self.mongo_connection()
         mycol = client[self._config['MONGO_DB']][self.symbol]
         latest_date = list(mycol.find({} , {"_id"}).sort("_id",-1).limit(1))
+        
         return latest_date[0]["_id"]
 
     def get_data(self):
+        """check if data is already in mongoDB or not
+            in case of not, collect data from binance api 
+            and insert it to mongoDB
+        """
         latest = self.get_latest_data()
         yesterday = self.str_to_epoch_ms(str(date.today() - timedelta(days=1)))
-
         if(latest == yesterday):
             pass
         else:
             self.collect_data(latest , yesterday)
-
+            self.insert_to_mongo()
