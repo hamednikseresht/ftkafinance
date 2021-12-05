@@ -5,6 +5,7 @@ from datetime import datetime,timedelta,date
 from dotenv import dotenv_values
 from pymongo import MongoClient
 import json
+import time
 
 class Crypto:
     # Class attributes common to all instances
@@ -16,7 +17,8 @@ class Crypto:
 
     def str_to_epoch_ms(self,date:str):
         """ convert date string to epoch time in miliseconds """
-        return int(datetime.strptime(date,'%Y-%m-%d').timestamp()*1000)
+        str_data = str(date)
+        return int(datetime.strptime(str_data,'%Y-%m-%d').timestamp()*1000)
 
     def data_update (self,data_frame):
         """ update today's data untile now
@@ -29,7 +31,7 @@ class Crypto:
         """
         start = date.today()
         end = start + timedelta(days=1)
-        return data_frame.append(self.data_to_df(start.isoformat(),
+        data_frame = data_frame.append(self.data_to_df(start.isoformat(),
                                                 end.isoformat()))
 
     def data_to_df (self,start_time:str,end_time:str):
@@ -54,6 +56,9 @@ class Crypto:
         """
         start = self.str_to_epoch_ms(start_time)
         end = self.str_to_epoch_ms(end_time)
+        # print(end_time , " *** " , type(end_time))
+        # print(end , " *** " , type(end))
+
         if end<start:
             raise SystemExit("End date must be larger than start date")
             
@@ -104,9 +109,14 @@ class Crypto:
         date_range = pd.date_range(start_date,end_date)
         for i,day in enumerate(date_range):
             if len(date_range)>i+1:
-                self.df = self.df.append(
-                        self.data_to_df(day.strftime('%Y-%m-%d'),
-                                    date_range[i+1].strftime('%Y-%m-%d')))
+                # print(day.strftime('%Y-%m-%d'))
+                # print(date_range[i+1].strftime('%Y-%m-%d'))
+                    self.df = self.df.append(
+                            self.data_to_df(day.strftime('%Y-%m-%d'),
+                                        date_range[i+1].strftime('%Y-%m-%d')))
+            if i % 50 == 0:
+                time.sleep(2)
+                print("check" , i)
 
     def mongo_connection(self):
         """ connect to mongoDB with credentials from .env file
@@ -140,7 +150,9 @@ class Crypto:
         json_list = json.loads(json.dumps(list(self.df.T.to_dict().values())))
         mycol.insert_many(json_list)
 
-    def load_data(self,start_date,end_date,interval='1T'):
+    def load_data(self,start_date='2019-01-01',
+                end_date=str(date.today()),
+                interval='1T'):
         """load data from mongoDB and convert it to a pandas data frame
         with desire time frequency
         
@@ -157,14 +169,30 @@ class Crypto:
         client = self.mongo_connection()
         mycol = client[self._config['MONGO_DB']][self.symbol]
         try :
-            db = client[self._config['MONGO_DB']]
+            mycol
         except Exception as exp:
             raise SystemExit(exp)
-            sys.exit(1)
+            # sys.exit(1)
+
+        start = self.str_to_epoch_ms(start_date)
+        end = self.str_to_epoch_ms(end_date)
+
+        latest = int(self.get_latest_data())
+
+        # print(latest)
+        # check data exist in database
+        if end > latest :
+            self.get_data()
+
         # get interval data from mongoDB and convert it to a pandas data frame
         data = pd.DataFrame(list(mycol.find(
-            {'_id':{'$gt': str(self.str_to_epoch_ms(start_date)),
-                    '$lt':str(self.str_to_epoch_ms(end_date))}})))
+            {'_id':{'$gt': str(self.str_to_epoch_ms(start)),
+                    '$lt':str(self.str_to_epoch_ms(end))}})))
+        
+        # today data , append to database fetched data
+        if end >= self.str_to_epoch_ms(str(date.today())) :       
+            self.data_update(data)
+        
         data = self.clean_data(data)
         
         return self.tf_maker(data,interval)
@@ -229,18 +257,18 @@ class Crypto:
         client = self.mongo_connection()
         mycol = client[self._config['MONGO_DB']][self.symbol]
         latest_date = list(mycol.find({} , {"_id"}).sort("_id",-1).limit(1))
-        
-        return latest_date[0]["_id"]
+
+        return '1567965420000' if len(latest_date) == 0 else latest_date[0]["_id"]
 
     def get_data(self):
         """check if data is already in mongoDB or not
             in case of not, collect data from binance api 
             and insert it to mongoDB
         """
-        latest = self.get_latest_data()
-        yesterday = self.str_to_epoch_ms(str(date.today() - timedelta(days=1)))
-        if(latest == yesterday):
-            pass
-        else:
-            self.collect_data(latest , yesterday)
+        latest = date.fromtimestamp(int(self.get_latest_data()) / 1000)
+        yesterday = date.today() - timedelta(days=1)
+
+        if(latest != yesterday):
+            self.collect_data(str(latest) , str(yesterday))
+            # print(self.df.head())
             self.insert_to_mongo()
