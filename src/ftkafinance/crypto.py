@@ -33,6 +33,7 @@ class Crypto:
         end = start + timedelta(days=1)
         data_frame = data_frame.append(self.data_to_df(start.isoformat(),
                                                 end.isoformat()))
+        return data_frame
 
     def data_to_df (self,start_time:str,end_time:str):
         """ Get data from Binance API and convert it to a pandas data frame
@@ -82,7 +83,6 @@ class Crypto:
             data[0]
         except IndexError :
             raise SystemExit("there is no response from your request")
-            sys.exit()
             
         if len(data) == 1500:
             print("Warning :\nthe limit rate for binance API is 1500 ")
@@ -187,7 +187,7 @@ class Crypto:
         
         # today data , append to database fetched data
         if end >= self.str_to_epoch_ms(str(date.today())) :       
-            self.data_update(data)
+            data = self.data_update(data)
         
         data = self.clean_data(data)
         
