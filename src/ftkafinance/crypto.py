@@ -56,8 +56,6 @@ class Crypto:
         """
         start = self.str_to_epoch_ms(start_time)
         end = self.str_to_epoch_ms(end_time)
-        # print(end_time , " *** " , type(end_time))
-        # print(end , " *** " , type(end))
 
         if end<start:
             raise SystemExit("End date must be larger than start date")
@@ -109,14 +107,11 @@ class Crypto:
         date_range = pd.date_range(start_date,end_date)
         for i,day in enumerate(date_range):
             if len(date_range)>i+1:
-                # print(day.strftime('%Y-%m-%d'))
-                # print(date_range[i+1].strftime('%Y-%m-%d'))
                     self.df = self.df.append(
                             self.data_to_df(day.strftime('%Y-%m-%d'),
                                         date_range[i+1].strftime('%Y-%m-%d')))
             if i % 50 == 0:
                 time.sleep(2)
-                print("check" , i)
 
     def mongo_connection(self):
         """ connect to mongoDB with credentials from .env file
@@ -140,15 +135,18 @@ class Crypto:
             client
         except Exception as exp:
             raise SystemExit(exp)
-            sys.exit(1)
             
         mycol = client[self._config['MONGO_DB']][self.symbol]
         # Set the unique index using the open time
         self.df['_id']=self.df.OpenTime.astype(str)
-        # First onvert the dataframe to a list of dictionaries
+        # First convert the dataframe to a list of dictionaries
         # then insert the list into the collection with json format 
         json_list = json.loads(json.dumps(list(self.df.T.to_dict().values())))
-        mycol.insert_many(json_list)
+        try:
+            # Ignore duplicate records
+            mycol.insert_many(json_list , ordered=False)
+        except Exception as exp:
+            pass
 
     def load_data(self,start_date='2019-01-01',
                 end_date=str(date.today()),
@@ -172,22 +170,20 @@ class Crypto:
             mycol
         except Exception as exp:
             raise SystemExit(exp)
-            # sys.exit(1)
 
         start = self.str_to_epoch_ms(start_date)
         end = self.str_to_epoch_ms(end_date)
 
         latest = int(self.get_latest_data())
 
-        # print(latest)
         # check data exist in database
         if end > latest :
             self.get_data()
 
         # get interval data from mongoDB and convert it to a pandas data frame
         data = pd.DataFrame(list(mycol.find(
-            {'_id':{'$gt': str(self.str_to_epoch_ms(start)),
-                    '$lt':str(self.str_to_epoch_ms(end))}})))
+            {'_id':{'$gt': str(start),
+                    '$lt':str(end)}})))
         
         # today data , append to database fetched data
         if end >= self.str_to_epoch_ms(str(date.today())) :       
@@ -270,5 +266,4 @@ class Crypto:
 
         if(latest != yesterday):
             self.collect_data(str(latest) , str(yesterday))
-            # print(self.df.head())
             self.insert_to_mongo()
