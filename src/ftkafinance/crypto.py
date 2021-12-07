@@ -33,8 +33,8 @@ class Crypto:
         percents = round(100.1 * count / float(total), 1)
         bar = '=' * filled_len + '-' * (bar_len - filled_len)
 
-    sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
-    sys.stdout.flush()
+        sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
+        sys.stdout.flush()
     
     def str_to_epoch_ms(self,date:str):
         """ convert date string to epoch time in miliseconds """
