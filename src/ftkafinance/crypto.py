@@ -15,6 +15,27 @@ class Crypto:
     def __init__(self,symbol):
         self.symbol = symbol
 
+    def progress(self,count, total, status=''):
+        import sys
+        """progress bar function developed by https://gist.github.com/vladignatyev
+        parmeters: count, total, status
+        ----------
+        count : int
+            current number of tasks
+        total : int
+            total number of task
+        status : str
+            status of the progress bar
+        """ 
+        bar_len = 60
+        filled_len = int(round(bar_len * count / float(total)))
+
+        percents = round(100.1 * count / float(total), 1)
+        bar = '=' * filled_len + '-' * (bar_len - filled_len)
+
+        sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
+        sys.stdout.flush()
+    
     def str_to_epoch_ms(self,date:str):
         """ convert date string to epoch time in miliseconds """
         str_data = str(date)
@@ -110,6 +131,7 @@ class Crypto:
                     self.df = self.df.append(
                             self.data_to_df(day.strftime('%Y-%m-%d'),
                                         date_range[i+1].strftime('%Y-%m-%d')))
+                    self.progress(i,len(date_range),status=f"{self.symbol} data is loading")
             if i % 50 == 0:
                 time.sleep(2)
 
