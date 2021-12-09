@@ -8,14 +8,22 @@ import json
 import time
 
 class Crypto:
+    """"""
     # Class attributes common to all instances
-    df = pd.DataFrame()
+    _df = pd.DataFrame()
+    _symbol = ""
     _config = dotenv_values('/.env')
-    
-    def __init__(self,symbol):
-        self.symbol = symbol
 
-    def progress(self,count, total, status=''):
+    def set_symbol(self,symbol:str):
+        """ set the symbol of the class
+        Parameters
+        ----------
+        symbol : str 
+            symbol supported by Binance API.
+        """
+        self._symbol = symbol
+    
+    def _progress(self,count, total, status=''):
         import sys
         """progress bar function developed by https://gist.github.com/vladignatyev
         parmeters: count, total, status
@@ -36,12 +44,12 @@ class Crypto:
         sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
         sys.stdout.flush()
     
-    def str_to_epoch_ms(self,date:str):
+    def _str_to_epoch_ms(self,date:str):
         """ convert date string to epoch time in miliseconds """
         str_data = str(date)
         return int(datetime.strptime(str_data,'%Y-%m-%d').timestamp()*1000)
 
-    def data_update (self,data_frame):
+    def _data_update (self,data_frame):
         """ update today's data untile now
         Parameters
         ----------
@@ -52,11 +60,11 @@ class Crypto:
         """
         start = date.today()
         end = start + timedelta(days=1)
-        data_frame = data_frame.append(self.data_to_df(start.isoformat(),
+        data_frame = data_frame.append(self._data_to_df(start.isoformat(),
                                                 end.isoformat()))
         return data_frame
 
-    def data_to_df (self,start_time:str,end_time:str):
+    def _data_to_df (self,start_time:str,end_time:str):
         """ Get data from Binance API and convert it to a pandas data frame
         numbers of candles are limited to 1500 per request
         Parameters
@@ -76,8 +84,8 @@ class Crypto:
         df : pandas data frame
             converted API response to a data frame.
         """
-        start = self.str_to_epoch_ms(start_time)
-        end = self.str_to_epoch_ms(end_time)
+        start = self._str_to_epoch_ms(start_time)
+        end = self._str_to_epoch_ms(end_time)
 
         if end<start:
             raise SystemExit("End date must be larger than start date")
@@ -115,7 +123,7 @@ class Crypto:
         
         return df
 
-    def collect_data (self, start_date:str, end_date:str):
+    def _collect_data (self, start_date:str, end_date:str):
         """ Split request with large interval time to smaller request in
         order to over come binance api limitaion 
         Parameters
@@ -128,14 +136,14 @@ class Crypto:
         date_range = pd.date_range(start_date,end_date)
         for i,day in enumerate(date_range):
             if len(date_range)>i+1:
-                    self.df = self.df.append(
-                            self.data_to_df(day.strftime('%Y-%m-%d'),
+                    self._df = self._df.append(
+                            self._data_to_df(day.strftime('%Y-%m-%d'),
                                         date_range[i+1].strftime('%Y-%m-%d')))
-                    self.progress(i,len(date_range),status=f"{self.symbol} data is loading")
+                    self._progress(i,len(date_range),status=f"{self.symbol} data is loading")
             if i % 50 == 0:
                 time.sleep(2)
 
-    def mongo_connection(self):
+    def _mongo_connection(self):
         """ connect to mongoDB with credentials from .env file
         Returns:
             Mongo Client Oject
@@ -147,12 +155,12 @@ class Crypto:
             password=self._config['MONGO_Password'])
         return client
 
-    def insert_to_mongo(self):
+    def _insert_to_mongo(self):
         """ insert data to mongoDB
             read .env file to get mongoDB credentials
             create a new collection if it doesn't exist
         """
-        client = self.mongo_connection() 
+        client = self._mongo_connection() 
         try :
             client
         except Exception as exp:
@@ -160,17 +168,17 @@ class Crypto:
             
         mycol = client[self._config['MONGO_DB']][self.symbol]
         # Set the unique index using the open time
-        self.df['_id']=self.df.OpenTime.astype(str)
+        self._df['_id']=self._df.OpenTime.astype(str)
         # First convert the dataframe to a list of dictionaries
         # then insert the list into the collection with json format 
-        json_list = json.loads(json.dumps(list(self.df.T.to_dict().values())))
+        json_list = json.loads(json.dumps(list(self._df.T.to_dict().values())))
         try:
             # Ignore duplicate records
             mycol.insert_many(json_list , ordered=False)
         except Exception as exp:
             pass
 
-    def load_data(self,start_date='2019-01-01',
+    def load_crypto_data(self,symbol,start_date='2019-01-01',
                 end_date=str(date.today()),
                 interval='1T'):
         """load data from mongoDB and convert it to a pandas data frame
@@ -186,21 +194,22 @@ class Crypto:
                 interval time for retrieving data.
                 default value is 1T (1 minute)
         """
-        client = self.mongo_connection()
+        self.set_symbol(symbol)
+        client = self._mongo_connection()
         mycol = client[self._config['MONGO_DB']][self.symbol]
         try :
             mycol
         except Exception as exp:
             raise SystemExit(exp)
 
-        start = self.str_to_epoch_ms(start_date)
-        end = self.str_to_epoch_ms(end_date)
+        start = self._str_to_epoch_ms(start_date)
+        end = self._str_to_epoch_ms(end_date)
 
-        latest = int(self.get_latest_data())
+        latest = int(self._get_latest_data())
 
         # check data exist in database
         if end > latest :
-            self.get_data()
+            self._get_data()
 
         # get interval data from mongoDB and convert it to a pandas data frame
         data = pd.DataFrame(list(mycol.find(
@@ -208,14 +217,14 @@ class Crypto:
                     '$lt':str(end)}})))
         
         # today data , append to database fetched data
-        if end >= self.str_to_epoch_ms(str(date.today())) :       
-            data = self.data_update(data)
+        if end >= self._str_to_epoch_ms(str(date.today())) :       
+            data = self._data_update(data)
         
-        data = self.clean_data(data)
+        data = self._clean_data(data)
         
-        return self.tf_maker(data,interval)
+        return self._tf_maker(data,interval)
     
-    def clean_data (self,data):
+    def _clean_data (self,data):
         """transform data in data frame to classic candle stick with volume
         Parameters
         ----------
@@ -236,7 +245,7 @@ class Crypto:
         
         return data[['Open','High','Low','Close','Volume']]
     
-    def tf_maker(self,data,interval):
+    def _tf_maker(self,data,interval):
         """ transform data to desire time frequency 
             with candle stick and volume data pattern
         """
@@ -267,25 +276,25 @@ class Crypto:
             
         return data
 
-    def get_latest_data(self):
+    def _get_latest_data(self):
         """Check the latest data inserted to mongoDB
         Returns:
             epoch time : last excist data in mongoDB
         """
-        client = self.mongo_connection()
+        client = self._mongo_connection()
         mycol = client[self._config['MONGO_DB']][self.symbol]
         latest_date = list(mycol.find({} , {"_id"}).sort("_id",-1).limit(1))
 
         return '1567965420000' if len(latest_date) == 0 else latest_date[0]["_id"]
 
-    def get_data(self):
+    def _get_data(self):
         """check if data is already in mongoDB or not
             in case of not, collect data from binance api 
             and insert it to mongoDB
         """
-        latest = date.fromtimestamp(int(self.get_latest_data()) / 1000)
+        latest = date.fromtimestamp(int(self._get_latest_data()) / 1000)
         yesterday = date.today() - timedelta(days=1)
 
         if(latest != yesterday):
-            self.collect_data(str(latest) , str(yesterday))
-            self.insert_to_mongo()
+            self._collect_data(str(latest) , str(yesterday))
+            self._insert_to_mongo()
