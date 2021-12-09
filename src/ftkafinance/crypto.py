@@ -92,7 +92,7 @@ class Crypto:
             
         url = 'https://fapi.binance.com/fapi/v1/klines'
         params = {
-        'symbol':str(self.symbol),
+        'symbol':str(self._symbol),
         'interval':'1m',
         'startTime':start,
         'endTime': end,
@@ -139,7 +139,7 @@ class Crypto:
                     self._df = self._df.append(
                             self._data_to_df(day.strftime('%Y-%m-%d'),
                                         date_range[i+1].strftime('%Y-%m-%d')))
-                    self._progress(i,len(date_range),status=f"{self.symbol} data is loading")
+                    self._progress(i,len(date_range),status=f"{self._symbol} data is loading")
             if i % 50 == 0:
                 time.sleep(2)
 
@@ -166,7 +166,7 @@ class Crypto:
         except Exception as exp:
             raise SystemExit(exp)
             
-        mycol = client[self._config['MONGO_DB']][self.symbol]
+        mycol = client[self._config['MONGO_DB']][self._symbol]
         # Set the unique index using the open time
         self._df['_id']=self._df.OpenTime.astype(str)
         # First convert the dataframe to a list of dictionaries
@@ -196,7 +196,7 @@ class Crypto:
         """
         self.set_symbol(symbol)
         client = self._mongo_connection()
-        mycol = client[self._config['MONGO_DB']][self.symbol]
+        mycol = client[self._config['MONGO_DB']][self._symbol]
         try :
             mycol
         except Exception as exp:
@@ -282,7 +282,7 @@ class Crypto:
             epoch time : last excist data in mongoDB
         """
         client = self._mongo_connection()
-        mycol = client[self._config['MONGO_DB']][self.symbol]
+        mycol = client[self._config['MONGO_DB']][self._symbol]
         latest_date = list(mycol.find({} , {"_id"}).sort("_id",-1).limit(1))
 
         return '1567965420000' if len(latest_date) == 0 else latest_date[0]["_id"]
