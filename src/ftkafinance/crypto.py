@@ -11,11 +11,18 @@ class Crypto:
     """"""
     # Class attributes common to all instances
     _df = pd.DataFrame()
+    _symbol = ""
     _config = dotenv_values('/.env')
-    
-    def __init__(self,symbol):
-        self.symbol = symbol
 
+    def set_symbol(self,symbol:str):
+        """ set the symbol of the class
+        Parameters
+        ----------
+        symbol : str 
+            symbol supported by Binance API.
+        """
+        self._symbol = symbol
+    
     def _progress(self,count, total, status=''):
         import sys
         """progress bar function developed by https://gist.github.com/vladignatyev
@@ -187,6 +194,7 @@ class Crypto:
                 interval time for retrieving data.
                 default value is 1T (1 minute)
         """
+        self.set_symbol(symbol)
         client = self._mongo_connection()
         mycol = client[self._config['MONGO_DB']][self.symbol]
         try :
