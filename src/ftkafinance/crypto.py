@@ -171,9 +171,9 @@ class Crypto:
         self._df['_id']=self._df.OpenTime.astype(str)
         # First convert the dataframe to a list of dictionaries
         # then insert the list into the collection with json format 
-        json_list = json.loads(json.dumps(list(self._df.T.to_dict().values())))
         try:
             # Ignore duplicate records
+            json_list = json.loads(json.dumps(list(self._df.T.to_dict().values())))
             mycol.insert_many(json_list , ordered=False)
         except Exception as exp:
             pass
