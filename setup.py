@@ -1,16 +1,16 @@
 
 # prefer setuptools over distutils
-from setuptools import setup, find_packages
+from setuptools import setup
 from os import path
 
-here = path.abspath(path.dirname(__file__))
-root = path.dirname(here)
+current_path = path.abspath(path.dirname(__file__))
+root = path.dirname(current_path)
 
-readme = path.join(here, 'README.md')
+readme = path.join(current_path, 'README.md')
 
-# long description from README file
-with open(readme, encoding='utf-8') as f:
-    long_description = f.read()
+# long description
+with open(readme, encoding='utf-8') as text:
+    long_description = text.read()
 
 setup(
   name = 'ftkafinance',         # How you named your package folder (MyLib)
