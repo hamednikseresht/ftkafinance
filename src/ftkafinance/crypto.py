@@ -194,6 +194,11 @@ class Crypto:
                 interval time for retrieving data.
                 default value is 1T (1 minute)
         """
+        # check if input symbol is valid
+        if symbol.lower() not in self._symbols_list():
+            raise SystemExit("Symbol is not valid \n\
+                Please select correct symbol: \n{}".format(self._symbols_list()))
+
         self.set_symbol(symbol)
         client = self._mongo_connection()
         mycol = client[self._config['MONGO_DB']][self._symbol]
@@ -301,3 +306,15 @@ class Crypto:
         if(latest != yesterday):
             self._collect_data(str(latest) , str(yesterday))
             self._insert_to_mongo()
+
+    def _symbols_list(self):
+        """ return a list of binance valid symbols
+        """
+        resp = requests.get(
+            url='https://fapi.binance.com/fapi/v1/exchangeInfo')
+        data = resp.json()
+
+        # create a list of valid symbols
+        symbol_list = [ s['symbol'].lower() for s in data['symbols']  ]
+
+        return symbol_list
