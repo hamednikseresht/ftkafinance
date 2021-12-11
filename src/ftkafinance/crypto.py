@@ -220,6 +220,9 @@ class Crypto:
         if end >= self._str_to_epoch_ms(str(date.today())) :       
             data = self._data_update(data)
         
+        if data.empty == True:
+            raise SystemExit("There is no valid data for this interval")
+
         data = self._clean_data(data)
         
         return self._tf_maker(data,interval)
