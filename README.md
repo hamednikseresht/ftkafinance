@@ -8,4 +8,4 @@ Data will store in the Mongo DB database for easy and fast access the next time.
 
 Requirements are Python interpreter and Mongo DB database. 
 
-After requirements were satisfied, you just need to create an instance and call the data\_load() method.
+After requirements were satisfied, you just need to create an instance and call the load_crypto_data() method.
