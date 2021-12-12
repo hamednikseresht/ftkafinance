@@ -297,14 +297,14 @@ class Crypto:
 
     def _get_data(self):
         """check if data is already in mongoDB or not
-            in case of not, collect data from binance api 
-            and insert it to mongoDB
+            in case of not, collect data from binance api until the end of yesterday 
+            and insert it to mongoDB 
         """
-        latest = date.fromtimestamp(int(self._get_latest_data()) / 1000)
+        # check latest data in mongoDB -100 is for avoiding confussion in time 00:00:00
+        latest = date.fromtimestamp((int(self._get_latest_data()) / 1000)-100)
         yesterday = date.today() - timedelta(days=1)
-
         if(latest != yesterday):
-            self._collect_data(str(latest) , str(yesterday))
+            self._collect_data(str(latest) , str(date.today()))
             self._insert_to_mongo()
 
     def _symbols_list(self):
