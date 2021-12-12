@@ -49,6 +49,116 @@ class Crypto:
         str_data = str(date)
         return int(datetime.strptime(str_data,'%Y-%m-%d').timestamp()*1000)
 
+    def _get_latest_data(self):
+        """Check the latest data inserted to mongoDB
+        Returns:
+            epoch time : last excist data in mongoDB
+        """
+        client = self._mongo_connection()
+        mycol = client[self._config['MONGO_DB']][self._symbol]
+        latest_date = list(mycol.find({} , {"_id"}).sort("_id",-1).limit(1))
+
+        return '1567965420000' if len(latest_date) == 0 else latest_date[0]["_id"]
+
+    def _symbols_list(self):
+        """ return a list of binance valid symbols
+        """
+        resp = requests.get(
+            url='https://fapi.binance.com/fapi/v1/exchangeInfo')
+        data = resp.json()
+
+        # create a list of valid symbols
+        symbol_list = [ s['symbol'].lower() for s in data['symbols']  ]
+
+        return symbol_list
+
+    def _mongo_connection(self):
+        """ connect to mongoDB with credentials from .env file
+        Returns:
+            Mongo Client Oject
+        """
+        client = MongoClient(
+            self._config['MONGO_Host'],
+            int(self._config['MONGO_Port']),
+            username=self._config['MONGO_User'],
+            password=self._config['MONGO_Password'])
+        return client
+
+    def _insert_to_mongo(self):
+        """ insert data to mongoDB
+            read .env file to get mongoDB credentials
+            create a new collection if it doesn't exist
+        """
+        client = self._mongo_connection() 
+        try :
+            client
+        except Exception as exp:
+            raise SystemExit(exp)
+            
+        mycol = client[self._config['MONGO_DB']][self._symbol]
+        # Set the unique index using the open time
+        self._df['_id']=self._df.OpenTime.astype(str)
+        # First convert the dataframe to a list of dictionaries
+        # then insert the list into the collection with json format 
+        try:
+            # Ignore duplicate records
+            json_list = json.loads(json.dumps(list(self._df.T.to_dict().values())))
+            mycol.insert_many(json_list , ordered=False)
+        except Exception as exp:
+            pass
+    
+    def _tf_maker(self,data,interval):
+        """ transform data to desire time frequency 
+            with candle stick and volume data pattern
+        """
+        offset =""" 
+        Wronge Interval!
+        Please use below identifier for time interval
+        ---------------------------------------------
+        D        calendar day frequency
+        W        weekly frequency
+        M        month end frequency
+        Q        quarter end frequency
+        A, Y     year end frequency
+        H        hourly frequency
+        T, min   minutely frequency
+        ----------------------------------------------
+        """
+        ohlc = {
+        'Open': 'first',
+        'High': 'max',
+        'Low': 'min',
+        'Close': 'last',
+        'Volume': 'sum'
+        } 
+        try :
+            data = data.resample(interval).apply(ohlc)
+        except ValueError :
+            sys.exit(print(offset))
+            
+        return data
+    
+    def _clean_data (self,data):
+        """transform data in data frame to classic candle stick with volume
+        Parameters
+        ----------
+        df : pandas data frame
+            data frame complete data of symbol.
+        Returns
+        -------
+        pandas data frame
+            clean classic candle stick with indexig date.
+        """ 
+        data.index = [datetime.fromtimestamp(x/1000) for x in data.OpenTime]
+        data.index.name = 'Date'
+        data['Open'] = pd.to_numeric(data['Open'],downcast="float")
+        data['High'] = pd.to_numeric(data['High'],downcast="float")
+        data['Low'] = pd.to_numeric(data['Low'],downcast="float")
+        data['Close'] = pd.to_numeric(data['Close'],downcast="float")
+        data['Volume'] = pd.to_numeric(data['Volume'],downcast="float")
+        
+        return data[['Open','High','Low','Close','Volume']]
+
     def _data_update (self,data_frame):
         """ update today's data untile now
         Parameters
@@ -143,40 +253,17 @@ class Crypto:
             if i % 50 == 0:
                 time.sleep(2)
 
-    def _mongo_connection(self):
-        """ connect to mongoDB with credentials from .env file
-        Returns:
-            Mongo Client Oject
+    def _get_data(self):
+        """check if data is already in mongoDB or not
+            in case of not, collect data from binance api until the end of yesterday 
+            and insert it to mongoDB 
         """
-        client = MongoClient(
-            self._config['MONGO_Host'],
-            int(self._config['MONGO_Port']),
-            username=self._config['MONGO_User'],
-            password=self._config['MONGO_Password'])
-        return client
-
-    def _insert_to_mongo(self):
-        """ insert data to mongoDB
-            read .env file to get mongoDB credentials
-            create a new collection if it doesn't exist
-        """
-        client = self._mongo_connection() 
-        try :
-            client
-        except Exception as exp:
-            raise SystemExit(exp)
-            
-        mycol = client[self._config['MONGO_DB']][self._symbol]
-        # Set the unique index using the open time
-        self._df['_id']=self._df.OpenTime.astype(str)
-        # First convert the dataframe to a list of dictionaries
-        # then insert the list into the collection with json format 
-        try:
-            # Ignore duplicate records
-            json_list = json.loads(json.dumps(list(self._df.T.to_dict().values())))
-            mycol.insert_many(json_list , ordered=False)
-        except Exception as exp:
-            pass
+        # check latest data in mongoDB -100 is for avoiding confussion in time 00:00:00
+        latest = date.fromtimestamp((int(self._get_latest_data()) / 1000)-100)
+        yesterday = date.today() - timedelta(days=1)
+        if(latest != yesterday):
+            self._collect_data(str(latest) , str(date.today()))
+            self._insert_to_mongo()
 
     def load_crypto_data(self,symbol,start_date='2019-01-01',
                 end_date=str(date.today()),
@@ -231,90 +318,3 @@ class Crypto:
         data = self._clean_data(data)
         
         return self._tf_maker(data,interval)
-    
-    def _clean_data (self,data):
-        """transform data in data frame to classic candle stick with volume
-        Parameters
-        ----------
-        df : pandas data frame
-            data frame complete data of symbol.
-        Returns
-        -------
-        pandas data frame
-            clean classic candle stick with indexig date.
-        """ 
-        data.index = [datetime.fromtimestamp(x/1000) for x in data.OpenTime]
-        data.index.name = 'Date'
-        data['Open'] = pd.to_numeric(data['Open'],downcast="float")
-        data['High'] = pd.to_numeric(data['High'],downcast="float")
-        data['Low'] = pd.to_numeric(data['Low'],downcast="float")
-        data['Close'] = pd.to_numeric(data['Close'],downcast="float")
-        data['Volume'] = pd.to_numeric(data['Volume'],downcast="float")
-        
-        return data[['Open','High','Low','Close','Volume']]
-    
-    def _tf_maker(self,data,interval):
-        """ transform data to desire time frequency 
-            with candle stick and volume data pattern
-        """
-        offset =""" 
-        Wronge Interval!
-        Please use below identifier for time interval
-        ---------------------------------------------
-        D        calendar day frequency
-        W        weekly frequency
-        M        month end frequency
-        Q        quarter end frequency
-        A, Y     year end frequency
-        H        hourly frequency
-        T, min   minutely frequency
-        ----------------------------------------------
-        """
-        ohlc = {
-        'Open': 'first',
-        'High': 'max',
-        'Low': 'min',
-        'Close': 'last',
-        'Volume': 'sum'
-        } 
-        try :
-            data = data.resample(interval).apply(ohlc)
-        except ValueError :
-            sys.exit(print(offset))
-            
-        return data
-
-    def _get_latest_data(self):
-        """Check the latest data inserted to mongoDB
-        Returns:
-            epoch time : last excist data in mongoDB
-        """
-        client = self._mongo_connection()
-        mycol = client[self._config['MONGO_DB']][self._symbol]
-        latest_date = list(mycol.find({} , {"_id"}).sort("_id",-1).limit(1))
-
-        return '1567965420000' if len(latest_date) == 0 else latest_date[0]["_id"]
-
-    def _get_data(self):
-        """check if data is already in mongoDB or not
-            in case of not, collect data from binance api until the end of yesterday 
-            and insert it to mongoDB 
-        """
-        # check latest data in mongoDB -100 is for avoiding confussion in time 00:00:00
-        latest = date.fromtimestamp((int(self._get_latest_data()) / 1000)-100)
-        yesterday = date.today() - timedelta(days=1)
-        if(latest != yesterday):
-            self._collect_data(str(latest) , str(date.today()))
-            self._insert_to_mongo()
-
-    def _symbols_list(self):
-        """ return a list of binance valid symbols
-        """
-        resp = requests.get(
-            url='https://fapi.binance.com/fapi/v1/exchangeInfo')
-        data = resp.json()
-
-        # create a list of valid symbols
-        symbol_list = [ s['symbol'].lower() for s in data['symbols']  ]
-
-        return symbol_list
