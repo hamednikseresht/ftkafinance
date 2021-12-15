@@ -304,7 +304,7 @@ class Crypto:
 
         start = Crypto._str_to_epoch_ms(start_date)
         end = Crypto._str_to_epoch_ms(end_date)
-
+        today = Crypto._str_to_epoch_ms(str(date.today()))
         latest = int(Crypto._get_latest_data())
 
         # check data exist in database
@@ -317,7 +317,7 @@ class Crypto:
                     '$lt':str(end)}})))
         
         # today data , append to database fetched data
-        if end >= Crypto._str_to_epoch_ms(str(date.today())) :       
+        if (end >= today and start <= today ) :       
             data = Crypto._data_update(data)
         
         if data.empty:
