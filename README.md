@@ -1,4 +1,6 @@
 # ftkafinance
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
+[![Python 3.6](https://img.shields.io/badge/python-3.8-blue.svg)](https://www.python.org/downloads/release/python-360/)
 
 "ftkfinance" is a finance Python package for easy to use collecting and analyzing market data.
 
@@ -8,4 +10,4 @@ Data will store in the Mongo DB database for easy and fast access the next time.
 
 Requirements are Python interpreter and Mongo DB database. 
 
-After requirements were satisfied, you just need to create an instance and call the load_crypto_data() method.
+After requirements were satisfied, you just need to create an instance and call the **load_crypto_data()** method.
