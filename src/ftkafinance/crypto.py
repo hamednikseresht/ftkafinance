@@ -196,7 +196,7 @@ class Crypto:
         return data_frame
 
     @classmethod
-    def _data_to_df(cls, start_time: str, end_time: str):
+    def _data_to_df(cls, start_time: str, end_time: str, interval: str='1m'):
         """ Get data from Binance API and convert it to a pandas data frame
         numbers of candles are limited to 1500 per request
         Parameters
@@ -225,7 +225,7 @@ class Crypto:
         url = 'https://fapi.binance.com/fapi/v1/klines'
         params = {
                     'symbol': str(cls._symbol),
-                    'interval': '1m',
+                    'interval': interval,
                     'startTime': start,
                     'endTime': end,
                     'limit': '1500'}
