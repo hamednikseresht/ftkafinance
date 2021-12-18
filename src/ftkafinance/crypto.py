@@ -88,6 +88,18 @@ class Crypto:
         symbol_list = [s['symbol'].lower() for s in data['symbols']]
 
         return symbol_list
+    
+    @classmethod
+    def _check_interval(cls):
+        '''Candlestick chart intervals
+           return list of valid intervals
+        '''
+        message = "m -> minutes; h -> hours; d -> days; w -> weeks; M -> months"
+        interval_list = ['1m', '3m', '5m', '15m', '30m',
+                        '1h', '2h', '4h', '6h', '8h',
+                        '12h', '1d']
+        
+        return {'message': message, 'intervals': interval_list}
 
     @classmethod
     def _mongo_connection(cls):
@@ -196,7 +208,7 @@ class Crypto:
         return data_frame
 
     @classmethod
-    def _data_to_df(cls, start_time: str, end_time: str):
+    def _data_to_df(cls, start_time: str, end_time: str, interval: str='1m'):
         """ Get data from Binance API and convert it to a pandas data frame
         numbers of candles are limited to 1500 per request
         Parameters
@@ -225,7 +237,7 @@ class Crypto:
         url = 'https://fapi.binance.com/fapi/v1/klines'
         params = {
                     'symbol': str(cls._symbol),
-                    'interval': '1m',
+                    'interval': interval,
                     'startTime': start,
                     'endTime': end,
                     'limit': '1500'}
@@ -254,7 +266,7 @@ class Crypto:
         return df
 
     @classmethod
-    def _collect_data(cls, start_date: str, end_date: str):
+    def _collect_data(cls, start_date: str, end_date: str, interval: str="1m"):
         """ Split request with large interval time to smaller request in
         order to over come binance api limitaion
         Parameters
@@ -269,7 +281,8 @@ class Crypto:
             if len(date_range) > i+1:
                 cls._df = cls._df.append(
                         cls._data_to_df(day.strftime('%Y-%m-%d'),
-                                        date_range[i+1].strftime('%Y-%m-%d')))
+                                        date_range[i+1].strftime('%Y-%m-%d'),
+                                        interval))
                 cls._progress(i, len(date_range),
                               status=f"{cls._symbol} data is loading")
             if i % 50 == 0:
@@ -343,3 +356,39 @@ class Crypto:
         data = Crypto._clean_data(data)
 
         return Crypto._tf_maker(data, interval)
+
+    @staticmethod
+    def get_crypto_data(symbol, start_date='2019-01-01',
+                         end_date=str(date.today()),
+                         interval='1d'):
+        """get data from API and convert it to a pandas data frame
+        with desire time interval
+
+        Parameters
+        ----------
+            symbol : str
+                symbol supported by Binance API.
+            start_date : str
+                start date for retrieving data  format: 2019-01-01.
+            end_date : str
+                end date for retrieving data: 2020-12-30
+            interval : str
+                interval time for retrieving data.
+                default value is 1d (1 day)
+        """
+        # check if input symbol is valid
+        if symbol.lower() not in Crypto._symbols_list():
+            raise SystemExit("Symbol is not valid \n\
+                Please select correct symbol: \n{}".format(Crypto._symbols_list()))
+
+        Crypto.set_symbol(symbol)
+
+        # check if input interval is valid
+        if interval.lower() not in Crypto._check_interval()['intervals']:
+            raise SystemExit("Interval is not valid \n"+
+                "{} \n".format(Crypto._check_interval()['message']) +
+                "Please select correct symbol:\
+                     \n{}".format(Crypto._check_interval()['intervals']))
+
+        Crypto._collect_data(start_date, end_date, interval)        
+        return Crypto._clean_data(Crypto._df)
