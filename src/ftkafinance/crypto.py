@@ -88,6 +88,18 @@ class Crypto:
         symbol_list = [s['symbol'].lower() for s in data['symbols']]
 
         return symbol_list
+    
+    @classmethod
+    def _check_interval():
+        '''Candlestick chart intervals
+           return list of valid intervals
+        '''
+        message = "m -> minutes; h -> hours; d -> days; w -> weeks; M -> months"
+        interval_list = ['1m', '3m', '5m', '15m', '30m',
+                        '1h', '2h', '4h', '6h', '8h',
+                        '12h', '1d', '3d', '1w', '1M']
+        
+        return {'message': message, 'intervals': interval_list}
 
     @classmethod
     def _mongo_connection(cls):
