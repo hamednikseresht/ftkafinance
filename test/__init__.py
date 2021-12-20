@@ -1,1 +1,1 @@
-from test.cryto_test import *
+from test.crypto_test import *
