@@ -383,6 +383,15 @@ class Crypto:
                 interval time for retrieving data.
                 default value is 1d (1 day)
         """
+        try:
+            datetime.strptime(start_date,'%Y-%m-%d')
+        except ValueError as ve:
+            raise SystemExit('Date is not valid \n{}, {}'.format(ve, start_date))
+        try:
+            datetime.strptime(end_date,'%Y-%m-%d')
+        except ValueError as ve:
+            raise SystemExit('Date is not valid \n{}, {}'.format(ve, end_date))
+
         # check if input symbol is valid
         if symbol.lower() not in Crypto._symbols_list():
             raise SystemExit("Symbol is not valid \n\
