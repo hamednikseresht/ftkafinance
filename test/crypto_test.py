@@ -1,16 +1,11 @@
 from datetime import date
-from numpy.lib.stride_tricks import DummyArray
 from pymongo import MongoClient
 from numpy import empty
 import pandas as pd
-import sys
-
-sys.path.insert(1, './src/ftkafinance')
 from crypto import Crypto
 
+
 class Test:
-
-
     _data = pd.DataFrame()
 
     def __init__(self) -> None:
@@ -22,7 +17,7 @@ class Test:
         self.test_mongo_connection()
         self.test_insert_to_mongo()
         self.test_clean_data()
-        self.test_tf_maker() 
+        self.test_tf_maker()
         self.test_data_update()
         self.test_data_to_df()
         self.test_collect_data()
@@ -93,7 +88,7 @@ class Test:
         for item in dummy:
             test_df = test_df.append(item, ignore_index=True)
         test_df.index = test_df._id
-        test_df = test_df.iloc[: , :-1]
+        test_df = test_df.iloc[:, :-1]
 
         return test_df
 
@@ -118,7 +113,7 @@ class Test:
     def test_get_latest_data():
         Crypto.set_symbol('btcusdt')
         var = Crypto._get_latest_data()
-        
+
         if len(var) != 0:
             print('pass: _get_latest_data')
         else:
@@ -155,7 +150,7 @@ class Test:
             'Open': '-1',
             'data': 'test db insert method'
         }
-        
+
         # set symbol
         Crypto.set_symbol('btcusdt')
         # append test data to df
@@ -168,9 +163,9 @@ class Test:
         # select table
         mycol = client[Crypto._config['MONGO_DB']][Crypto._symbol]
         # check if dummy data iserted to db
-        if len(list(mycol.find({'_id':'-1.0'}))) > 0:
+        if len(list(mycol.find({'_id': '-1.0'}))) > 0:
             # delete dummy data from db
-            mycol.delete_one({'_id':'-1.0'})
+            mycol.delete_one({'_id': '-1.0'})
             Crypto._df = backup
             print('pass: _insert_to_mongo')
         else:
@@ -179,7 +174,7 @@ class Test:
     @staticmethod
     def test_clean_data():
         test_df = Test._creat_dummy_data()
-        
+
         test = Crypto._clean_data(test_df)
 
         if len(test) > 0:
@@ -192,8 +187,8 @@ class Test:
     def test_tf_maker():
         Test.test_clean_data()
 
-        test = Crypto._tf_maker(Test._data , '1d')
-        
+        test = Crypto._tf_maker(Test._data, '1d')
+
         if len(test) > 0:
             Test._data = Test._data.append(test)
             print('pass: _tf_maker')
@@ -214,34 +209,40 @@ class Test:
     @staticmethod
     def test_data_to_df():
         date_collection = [
-                          {'start': '2020-01-01', 'end': '2020-01-03', 'interval': '1m'},
-                          {'start': '2020-05-01', 'end': '2020-05-05', 'interval': '30m'},
-                          {'start': '2020-01-01', 'end': '2020-01-05', 'interval': '6h'},
-                          {'start': '2021-10-01', 'end': '2021-10-05', 'interval': '1d'}
+                          {'start': '2020-01-01', 'end': '2020-01-03',
+                           'interval': '1m'},
+                          {'start': '2020-05-01', 'end': '2020-05-05',
+                           'interval': '30m'},
+                          {'start': '2020-01-01', 'end': '2020-01-05',
+                           'interval': '6h'},
+                          {'start': '2021-10-01', 'end': '2021-10-05',
+                           'interval': '1d'}
                           ]
         Crypto.set_symbol('btcusdt')
         result = []
         for item in date_collection:
-            result.append(Crypto._data_to_df(item['start'], item['end'], item['interval']))
+            result.append(Crypto._data_to_df(item['start'],
+                                             item['end'],
+                                             item['interval']))
 
         if len(result) == 4:
             print('pass: _data_to_df')
         else:
-            assert False, '_data_to_df error'            
+            assert False, '_data_to_df error'
 
     @staticmethod
     def test_collect_data():
-        date_collection = {'start': '2020-01-01', 
-                           'end': '2020-01-03', 
+        date_collection = {'start': '2020-01-01',
+                           'end': '2020-01-03',
                            'interval': '1m'}
 
         Crypto.set_symbol('btcusdt')
         Crypto._collect_data(date_collection['start'],
-                             date_collection['end'], 
+                             date_collection['end'],
                              date_collection['interval'])
 
         if len(Crypto._df) == 0:
-            assert False, '_collect_data error'         
+            assert False, '_collect_data error'
         else:
             print('pass: _collect_data \n'+'pass: _get_data')
 
@@ -251,14 +252,14 @@ class Test:
                            'start': '2020-01-01',
                            'end': '2020-01-10',
                            'interval': '1T'}
-  
+
         result = Crypto.load_crypto_data(date_collection['symbol'],
                                          date_collection['start'],
                                          date_collection['end'],
                                          date_collection['interval'])
-        
+
         if len(result) == 0:
-            assert False, 'load_crypto_data error'         
+            assert False, 'load_crypto_data error'
         else:
             print('pass: load_crypto_data')
 
@@ -268,14 +269,13 @@ class Test:
                            'start': '2020-01-01',
                            'end': '2020-01-10',
                            'interval': '1h'}
-  
+
         result = Crypto.get_crypto_data(date_collection['symbol'],
-                                         date_collection['start'],
-                                         date_collection['end'],
-                                         date_collection['interval'])
-        
+                                        date_collection['start'],
+                                        date_collection['end'],
+                                        date_collection['interval'])
+
         if len(result) == 0:
-            assert False, 'get_crypto_data error'         
+            assert False, 'get_crypto_data error'
         else:
             print('pass: get_crypto_data')
-
