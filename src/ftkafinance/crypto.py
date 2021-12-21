@@ -116,6 +116,7 @@ class Crypto:
 
     @classmethod
     def _insert_to_mongo(cls):
+        import warnings
         """ insert data to mongoDB
             read .env file to get mongoDB credentials
             create a new collection if it doesn't exist
@@ -129,11 +130,13 @@ class Crypto:
         mycol = client[cls._config['MONGO_DB']][cls._symbol]
         # Set the unique index using the open time
         cls._df['_id'] = cls._df.OpenTime.astype(str)
-        # First convert the dataframe to a list of dictionaries
-        # then insert the list into the collection with json format
         try:
-            # Ignore duplicate records
+            # suppress all the warnings
+            warnings.filterwarnings('ignore', '.*unique.*',)
+            # First convert the dataframe to a list of dictionaries
+            # then insert the list into the collection with json format
             json_list = json.loads(json.dumps(list(cls._df.T.to_dict().values())))
+            # Ignore duplicate records
             mycol.insert_many(json_list, ordered=False)
         except Exception:
             pass
@@ -340,7 +343,7 @@ class Crypto:
             end = Crypto._str_to_epoch_ms(end_date)
         except ValueError as ve:
             raise SystemExit('Date is not valid \n{}, {}'.format(ve, end_date))
-        
+
         today = Crypto._str_to_epoch_ms(str(date.today()))
         latest = int(Crypto._get_latest_data())
 
