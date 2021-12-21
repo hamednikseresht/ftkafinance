@@ -88,17 +88,18 @@ class Crypto:
         symbol_list = [s['symbol'].lower() for s in data['symbols']]
 
         return symbol_list
-    
+
     @classmethod
     def _check_interval(cls):
         '''Candlestick chart intervals
            return list of valid intervals
         '''
-        message = "m -> minutes; h -> hours; d -> days; w -> weeks; M -> months"
+        message = "m -> minutes; h -> hours;\
+                   d -> days; w -> weeks; M -> months"
         interval_list = ['1m', '3m', '5m', '15m', '30m',
-                        '1h', '2h', '4h', '6h', '8h',
-                        '12h', '1d']
-        
+                         '1h', '2h', '4h', '6h', '8h',
+                         '12h', '1d']
+
         return {'message': message, 'intervals': interval_list}
 
     @classmethod
@@ -211,7 +212,7 @@ class Crypto:
         return data_frame
 
     @classmethod
-    def _data_to_df(cls, start_time: str, end_time: str, interval: str='1m'):
+    def _data_to_df(cls, start_time: str, end_time: str, interval='1m'):
         """ Get data from Binance API and convert it to a pandas data frame
         numbers of candles are limited to 1500 per request
         Parameters
@@ -269,7 +270,7 @@ class Crypto:
         return df
 
     @classmethod
-    def _collect_data(cls, start_date: str, end_date: str, interval: str="1m"):
+    def _collect_data(cls, start_date: str, end_date: str, interval="1m"):
         """ Split request with large interval time to smaller request in
         order to over come binance api limitaion
         Parameters
@@ -325,7 +326,8 @@ class Crypto:
         # check if input symbol is valid
         if symbol.lower() not in Crypto._symbols_list():
             raise SystemExit("Symbol is not valid \n\
-                Please select correct symbol: \n{}".format(Crypto._symbols_list()))
+                              Please select correct\
+                              symbol: \n{}".format(Crypto._symbols_list()))
 
         Crypto.set_symbol(symbol)
         client = Crypto._mongo_connection()
@@ -338,11 +340,13 @@ class Crypto:
         try:
             start = Crypto._str_to_epoch_ms(start_date)
         except ValueError as ve:
-            raise SystemExit('Date is not valid \n{}, {}'.format(ve, start_date))
+            raise SystemExit('Date is not valid \n{},\
+                             {}'.format(ve, start_date))
         try:
             end = Crypto._str_to_epoch_ms(end_date)
         except ValueError as ve:
-            raise SystemExit('Date is not valid \n{}, {}'.format(ve, end_date))
+            raise SystemExit('Date is not valid \n{},\
+                             {}'.format(ve, end_date))
 
         today = Crypto._str_to_epoch_ms(str(date.today()))
         latest = int(Crypto._get_latest_data())
@@ -369,8 +373,8 @@ class Crypto:
 
     @staticmethod
     def get_crypto_data(symbol, start_date='2019-01-01',
-                         end_date=str(date.today()),
-                         interval='1d'):
+                        end_date=str(date.today()),
+                        interval='1d'):
         """get data from API and convert it to a pandas data frame
         with desire time interval
 
@@ -387,27 +391,30 @@ class Crypto:
                 default value is 1d (1 day)
         """
         try:
-            datetime.strptime(start_date,'%Y-%m-%d')
+            datetime.strptime(start_date, '%Y-%m-%d')
         except ValueError as ve:
-            raise SystemExit('Date is not valid \n{}, {}'.format(ve, start_date))
+            raise SystemExit('Date is not valid \n{},\
+                             {}'.format(ve, start_date))
         try:
-            datetime.strptime(end_date,'%Y-%m-%d')
+            datetime.strptime(end_date, '%Y-%m-%d')
         except ValueError as ve:
-            raise SystemExit('Date is not valid \n{}, {}'.format(ve, end_date))
+            raise SystemExit('Date is not valid \n{},\
+                             {}'.format(ve, end_date))
 
         # check if input symbol is valid
         if symbol.lower() not in Crypto._symbols_list():
             raise SystemExit("Symbol is not valid \n\
-                Please select correct symbol: \n{}".format(Crypto._symbols_list()))
+                             Please select correct\
+                             symbol: \n{}".format(Crypto._symbols_list()))
 
         Crypto.set_symbol(symbol)
 
         # check if input interval is valid
         if interval.lower() not in Crypto._check_interval()['intervals']:
-            raise SystemExit("Interval is not valid \n"+
-                "{} \n".format(Crypto._check_interval()['message']) +
-                "Please select correct symbol:\
-                     \n{}".format(Crypto._check_interval()['intervals']))
+            raise SystemExit("Interval is not valid \n" +
+                             "{} \n".format(Crypto._check_interval()['message']) +
+                             "Please select correct symbol:\
+                             \n{}".format(Crypto._check_interval()['intervals']))
 
-        Crypto._collect_data(start_date, end_date, interval)        
+        Crypto._collect_data(start_date, end_date, interval)
         return Crypto._clean_data(Crypto._df)
