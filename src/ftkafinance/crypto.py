@@ -116,6 +116,7 @@ class Crypto:
 
     @classmethod
     def _insert_to_mongo(cls):
+        import warnings
         """ insert data to mongoDB
             read .env file to get mongoDB credentials
             create a new collection if it doesn't exist
@@ -129,11 +130,13 @@ class Crypto:
         mycol = client[cls._config['MONGO_DB']][cls._symbol]
         # Set the unique index using the open time
         cls._df['_id'] = cls._df.OpenTime.astype(str)
-        # First convert the dataframe to a list of dictionaries
-        # then insert the list into the collection with json format
         try:
-            # Ignore duplicate records
+            # suppress all the warnings
+            warnings.filterwarnings('ignore', '.*unique.*',)
+            # First convert the dataframe to a list of dictionaries
+            # then insert the list into the collection with json format
             json_list = json.loads(json.dumps(list(cls._df.T.to_dict().values())))
+            # Ignore duplicate records
             mycol.insert_many(json_list, ordered=False)
         except Exception:
             pass
@@ -332,8 +335,15 @@ class Crypto:
         except Exception as exp:
             raise SystemExit(exp)
 
-        start = Crypto._str_to_epoch_ms(start_date)
-        end = Crypto._str_to_epoch_ms(end_date)
+        try:
+            start = Crypto._str_to_epoch_ms(start_date)
+        except ValueError as ve:
+            raise SystemExit('Date is not valid \n{}, {}'.format(ve, start_date))
+        try:
+            end = Crypto._str_to_epoch_ms(end_date)
+        except ValueError as ve:
+            raise SystemExit('Date is not valid \n{}, {}'.format(ve, end_date))
+
         today = Crypto._str_to_epoch_ms(str(date.today()))
         latest = int(Crypto._get_latest_data())
 
@@ -376,6 +386,15 @@ class Crypto:
                 interval time for retrieving data.
                 default value is 1d (1 day)
         """
+        try:
+            datetime.strptime(start_date,'%Y-%m-%d')
+        except ValueError as ve:
+            raise SystemExit('Date is not valid \n{}, {}'.format(ve, start_date))
+        try:
+            datetime.strptime(end_date,'%Y-%m-%d')
+        except ValueError as ve:
+            raise SystemExit('Date is not valid \n{}, {}'.format(ve, end_date))
+
         # check if input symbol is valid
         if symbol.lower() not in Crypto._symbols_list():
             raise SystemExit("Symbol is not valid \n\
