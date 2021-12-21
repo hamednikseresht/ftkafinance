@@ -1,73 +1,96 @@
 import talib as ta
-import numpy as np
-import pandas as pd
-
-pattern = {
-ta.CDL2CROWS : 'Two Crows',
-ta.CDL3BLACKCROWS : 'Three Black Crows',
-ta.CDL3INSIDE : 'Three Inside Up/Down',
-ta.CDL3LINESTRIKE : 'Three-Line Strike',
-ta.CDL3OUTSIDE : 'Three Outside Up/Down',
-ta.CDL3STARSINSOUTH : 'Three Stars In The South',
-ta.CDL3WHITESOLDIERS : 'Three Advancing White Soldiers',
-ta.CDLABANDONEDBABY : 'Abandoned Baby',
-ta.CDLADVANCEBLOCK : 'Advance Block',
-ta.CDLBELTHOLD : 'Belt-hold',
-ta.CDLBREAKAWAY : 'Breakaway',
-ta.CDLCLOSINGMARUBOZU : 'Closing Marubozu',
-ta.CDLCONCEALBABYSWALL : 'Concealing Baby Swallow',
-ta.CDLCOUNTERATTACK : 'Counterattack',
-ta.CDLDARKCLOUDCOVER : 'Dark Cloud Cover',
-ta.CDLDOJI : 'Doji',
-ta.CDLDOJISTAR : 'Doji Star',
-ta.CDLDRAGONFLYDOJI : 'Dragonfly Doji',
-ta.CDLENGULFING : 'Engulfing Pattern',
-ta.CDLEVENINGDOJISTAR : 'Evening Doji Star',
-ta.CDLEVENINGSTAR : 'Evening Star',
-ta.CDLGAPSIDESIDEWHITE : 'Up/Down-gap side-by-side white lines',
-ta.CDLGRAVESTONEDOJI : 'Gravestone Doji',
-ta.CDLHAMMER : 'Hammer',
-ta.CDLHANGINGMAN : 'Hanging Man',
-ta.CDLHARAMI : 'Harami Pattern',
-ta.CDLHARAMICROSS : 'Harami Cross Pattern',
-ta.CDLHIGHWAVE : 'High-Wave Candle',
-ta.CDLHIKKAKE : 'Hikkake Pattern',
-ta.CDLHIKKAKEMOD : 'Modified Hikkake Pattern',
-ta.CDLHOMINGPIGEON : 'Homing Pigeon',
-ta.CDLIDENTICAL3CROWS : 'Identical Three Crows',
-ta.CDLINNECK : 'In-Neck Pattern',
-ta.CDLINVERTEDHAMMER : 'Inverted Hammer',
-ta.CDLKICKING : 'Kicking',
-ta.CDLKICKINGBYLENGTH : 'Kicking - bull/bear determined by the longer marubozu',
-ta.CDLLADDERBOTTOM : 'Ladder Bottom',
-ta.CDLLONGLEGGEDDOJI : 'Long Legged Doji',
-ta.CDLLONGLINE : 'Long Line Candle',
-ta.CDLMARUBOZU : 'Marubozu',
-ta.CDLMATCHINGLOW : 'Matching Low',
-ta.CDLMATHOLD : 'Mat Hold',
-ta.CDLMORNINGDOJISTAR : 'Morning Doji Star',
-ta.CDLMORNINGSTAR : 'Morning Star',
-ta.CDLONNECK : 'On-Neck Pattern',
-ta.CDLPIERCING : 'Piercing Pattern',
-ta.CDLRICKSHAWMAN : 'Rickshaw Man',
-ta.CDLRISEFALL3METHODS : 'Rising/Falling Three Methods',
-ta.CDLSEPARATINGLINES : 'Separating Lines',
-ta.CDLSHOOTINGSTAR : 'Shooting Star',
-ta.CDLSHORTLINE : 'Short Line Candle',
-ta.CDLSPINNINGTOP : 'Spinning Top',
-ta.CDLSTALLEDPATTERN : 'Stalled Pattern',
-ta.CDLSTICKSANDWICH : 'Stick Sandwich',
-ta.CDLTAKURI : 'Takuri (Dragonfly Doji with very long lower shadow)',
-ta.CDLTASUKIGAP : 'Tasuki Gap',
-ta.CDLTHRUSTING : 'Thrusting Pattern',
-ta.CDLTRISTAR : 'Tristar Pattern',
-ta.CDLUNIQUE3RIVER : 'Unique 3 River',
-ta.CDLUPSIDEGAP2CROWS : 'Upside Gap Two Crows',
-ta.CDLXSIDEGAP3METHODS : 'Upside/Downside Gap Three Methods'
+from difflib import SequenceMatcher
+# talib patterns dict
+patterns = {
+        'two crows':  ta.CDL2CROWS,
+        'three black crows':  ta.CDL3BLACKCROWS,
+        'three inside up/down':  ta.CDL3INSIDE,
+        'three-line strike':  ta.CDL3LINESTRIKE,
+        'three outside up/down':  ta.CDL3OUTSIDE,
+        'three stars in the south':  ta.CDL3STARSINSOUTH,
+        'three advancing white soldiers':  ta.CDL3WHITESOLDIERS,
+        'abandoned baby':  ta.CDLABANDONEDBABY,
+        'advance block':  ta.CDLADVANCEBLOCK,
+        'belt-hold':  ta.CDLBELTHOLD,
+        'breakaway':  ta.CDLBREAKAWAY,
+        'closing marubozu':  ta.CDLCLOSINGMARUBOZU,
+        'concealing baby swallow':  ta.CDLCONCEALBABYSWALL,
+        'counterattack':  ta.CDLCOUNTERATTACK,
+        'dark cloud cover':  ta.CDLDARKCLOUDCOVER,
+        'doji':  ta.CDLDOJI,
+        'doji star':  ta.CDLDOJISTAR,
+        'dragonfly doji':  ta.CDLDRAGONFLYDOJI,
+        'engulfing pattern':  ta.CDLENGULFING,
+        'evening doji star':  ta.CDLEVENINGDOJISTAR,
+        'evening star':  ta.CDLEVENINGSTAR,
+        'up/down-gap side-by-side white lines':  ta.CDLGAPSIDESIDEWHITE,
+        'gravestone doji':  ta.CDLGRAVESTONEDOJI,
+        'hammer':  ta.CDLHAMMER,
+        'hanging man':  ta.CDLHANGINGMAN,
+        'harami pattern':  ta.CDLHARAMI,
+        'harami cross pattern':  ta.CDLHARAMICROSS,
+        'high-wave candle':  ta.CDLHIGHWAVE,
+        'hikkake pattern':  ta.CDLHIKKAKE,
+        'modified hikkake pattern':  ta.CDLHIKKAKEMOD,
+        'homing pigeon':  ta.CDLHOMINGPIGEON,
+        'identical three crows':  ta.CDLIDENTICAL3CROWS,
+        'in-neck pattern':  ta.CDLINNECK,
+        'inverted hammer':  ta.CDLINVERTEDHAMMER,
+        'kicking':  ta.CDLKICKING,
+        'ladder bottom':  ta.CDLLADDERBOTTOM,
+        'long legged doji':  ta.CDLLONGLEGGEDDOJI,
+        'long line candle':  ta.CDLLONGLINE,
+        'marubozu':  ta.CDLMARUBOZU,
+        'matching low':  ta.CDLMATCHINGLOW,
+        'mat hold':  ta.CDLMATHOLD,
+        'morning doji star':  ta.CDLMORNINGDOJISTAR,
+        'morning star':  ta.CDLMORNINGSTAR,
+        'on-neck pattern':  ta.CDLONNECK,
+        'piercing pattern':  ta.CDLPIERCING,
+        'rickshaw man':  ta.CDLRICKSHAWMAN,
+        'rising/falling three methods':  ta.CDLRISEFALL3METHODS,
+        'separating lines':  ta.CDLSEPARATINGLINES,
+        'shooting star':  ta.CDLSHOOTINGSTAR,
+        'short line candle':  ta.CDLSHORTLINE,
+        'spinning top':  ta.CDLSPINNINGTOP,
+        'stalled pattern':  ta.CDLSTALLEDPATTERN,
+        'stick sandwich':  ta.CDLSTICKSANDWICH,
+        'takuri (dragonfly doji with very long lower shadow)':  ta.CDLTAKURI,
+        'tasuki gap':  ta.CDLTASUKIGAP,
+        'thrusting pattern':  ta.CDLTHRUSTING,
+        'tristar pattern':  ta.CDLTRISTAR,
+        'unique 3 river':  ta.CDLUNIQUE3RIVER,
+        'upside gap two crows':  ta.CDLUPSIDEGAP2CROWS,
+        'upside/downside gap three methods':  ta.CDLXSIDEGAP3METHODS
 }
 
+
+# clean string for pattern matching
+def clean_string(string):
+    string = string.lower()
+    return string.replace('-', '').replace('/', '').replace('(', '')\
+        .replace(')', '').replace('.', '').replace('_', '')
+
+
 # calculate candle stick patterns
-def candle_stick_patterns(df):
-    # itreate on dict
-    for key, value in pattern.items():
-        df[value] = key(df.Open, df.High, df.Low, df.Close)
+def candle_stick_patterns(df, *input_pattern):
+    """
+    calculate candle stick patterns
+    params:
+        df: dataframe
+        input_pattern: list of patterns to calculate
+    """
+    # if no input pattern is given, calculate all patterns
+    if not input_pattern:
+        for key, value in patterns.items():
+            df[key] = value(df.Open, df.High, df.Low, df.Close)
+    else:
+        # if input pattern is given, calculate only those patterns
+        for i in input_pattern:
+            for p in patterns:
+                # if input pattern is found, calculate it
+                # find matches with 50% similarity or more
+                if SequenceMatcher(None, clean_string(i), p).ratio() > 0.5:
+                    df[p] = patterns[p](df.Open, df.High, df.Low, df.Close)
+            else:
+                print(f"no pattern found for {i}")
