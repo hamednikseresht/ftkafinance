@@ -332,8 +332,15 @@ class Crypto:
         except Exception as exp:
             raise SystemExit(exp)
 
-        start = Crypto._str_to_epoch_ms(start_date)
-        end = Crypto._str_to_epoch_ms(end_date)
+        try:
+            start = Crypto._str_to_epoch_ms(start_date)
+        except ValueError as ve:
+            raise SystemExit('Date is not valid \n{}, {}'.format(ve, start_date))
+        try:
+            end = Crypto._str_to_epoch_ms(end_date)
+        except ValueError as ve:
+            raise SystemExit('Date is not valid \n{}, {}'.format(ve, end_date))
+        
         today = Crypto._str_to_epoch_ms(str(date.today()))
         latest = int(Crypto._get_latest_data())
 
