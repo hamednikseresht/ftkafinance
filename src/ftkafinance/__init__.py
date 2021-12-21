@@ -1,2 +1,2 @@
-from src.ftkafinance.crypto import Crypto
-import src.ftkafinance.analysis as analysis
+from src.ftkafinance.crypto import *
+from src.ftkafinance.analysis import *

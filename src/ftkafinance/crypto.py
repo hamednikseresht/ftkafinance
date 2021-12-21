@@ -41,7 +41,7 @@ class Crypto:
         bar_len = 60
         filled_len = int(round(bar_len * count / float(total)))
 
-        percents = round(100.1 * count / float(total), 1)
+        percents = round(100 * count / float(total), 1)
         bar = '=' * filled_len + '-' * (bar_len - filled_len)
 
         sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
@@ -283,7 +283,7 @@ class Crypto:
                         cls._data_to_df(day.strftime('%Y-%m-%d'),
                                         date_range[i+1].strftime('%Y-%m-%d'),
                                         interval))
-                cls._progress(i, len(date_range),
+                cls._progress(i+2, len(date_range),
                               status=f"{cls._symbol} data is loading")
             if i % 50 == 0:
                 time.sleep(2)
