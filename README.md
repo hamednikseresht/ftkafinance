@@ -8,6 +8,7 @@
 ## Table of Contents
  - [Features](#features)
  - [Requirements](#requirements)
+ - [Installation](#installation)
  - [Usage](#usage)
  - [License](#license)
 
@@ -34,6 +35,18 @@ Install these following requirements in order to make sure the package will resp
 
 > ### Warning : it is essential to install [TA-LIB](http://mrjbq7.github.io/ta-lib/install.html) in your machine
 
+
+## Installation
+Currently you can install this package from github:
+
+##### LINUX/MAC
+```shell
+pip install git+https://github.com/hamednikseresht/ftkafinance
+```
+##### WINDOWS
+```shell
+pip install git+https://github.com/hamednikseresht/ftkafinance #egg==httpie
+```
 
 ## Usage
 To use this package you have 2 option get data and strore it in a database or get data and use it without database. 
