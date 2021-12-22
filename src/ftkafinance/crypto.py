@@ -307,7 +307,7 @@ class Crypto:
             cls._insert_to_mongo()
 
     @staticmethod
-    def load_crypto_data(symbol, start_date='2019-01-01',
+    def load_crypto_data(symbol, start_date='2019-10-01',
                          end_date=str(date.today()),
                          interval='1T'):
         """load data from mongoDB and convert it to a pandas data frame
@@ -372,7 +372,7 @@ class Crypto:
         return Crypto._tf_maker(data, interval)
 
     @staticmethod
-    def get_crypto_data(symbol, start_date='2019-01-01',
+    def get_crypto_data(symbol, start_date='2019-10-01',
                         end_date=str(date.today()),
                         interval='1d'):
         """get data from API and convert it to a pandas data frame
